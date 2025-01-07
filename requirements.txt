@@ -1,0 +1,4 @@
+gmqtt==0.7.0
+uvloop==0.21.0
+motor==3.6.0
+pydantic==2.10.4
