@@ -2,7 +2,7 @@ import asyncio
 from os import getenv
 import signal
 import logging
-import uvloop # gmqtt also compatibility with uvloop
+import uvloop
 from lib.mongodb import MongodbClient
 from lib.mqtt import Mqtt as MqttClient
 
@@ -13,12 +13,6 @@ MQTT_PORT = int(getenv("MQTT_PORT", 1883))
 MONGODB_URI = getenv("MONGODB_URI", "mongodb://localhost:27017")
 BASE_TOPIC = getenv("BASE_TOPIC", "mongodb/#")
 
-
-## robots publish to mongodb/<collection name>/<operation>/<response topic id>
-
-## ie if a robot wants to find many documents in the 'users' collection,
-## it would publish to mongodb/users/find/<any string> with a payload that is a dict that represents the kwargs that the find function requires
-## and this program would respond by publishing to the response topic defined in the original message
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 STOP = asyncio.Event()

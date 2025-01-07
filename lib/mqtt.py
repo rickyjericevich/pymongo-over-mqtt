@@ -79,6 +79,3 @@ class Mqtt(Client):
 
         except ValidationError as e:
             logging.error(f"Error while validating message {topic=}: {e}")
-        # except Exception as e:
-        #     logging.error(f"Error while executing pymongo command:")
-        #     logging.error(e)

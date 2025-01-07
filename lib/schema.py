@@ -10,7 +10,7 @@ class SupportedMongoOperations(str, Enum):
     AGGREGATE = "aggregate"
     INSERT_ONE = "insert_one"
     UPDATE_ONE = "update_one"
-    # multiple inserts, updates not allowed, delete, replace not allowed
+    # TODO: complete this enum
 
 
 class BaseTopic(BaseModel):
@@ -33,15 +33,15 @@ class PymongoClientAttrs(BaseModel):
 
 
 class DefaultOperationHandler(PymongoClientAttrs):
-    def evaluate(self, client: MongodbClient, method_kwargs: dict): # -> Awaitable| Mongo Cursor:
-        for attr in self.dict(exclude_none=True).values():
+    def evaluate(self, client: MongodbClient, method_kwargs: dict): # -> Awaitable | Mongo Cursor:
+        for attr in self.model_dump(exclude_none=True).values():
             client = getattr(client, attr) # client var gets overwritten with value returned by getattrs()
 
         return client(**method_kwargs) # client should be the final method that is operating on the db/collection
 
 
 class CursorHandler(DefaultOperationHandler):
-    mongodb_operator: Literal[SupportedMongoOperations.FIND] | Literal[SupportedMongoOperations.AGGREGATE] # TODO: add the other functions here that return cursors
+    mongodb_operator: Literal[SupportedMongoOperations.FIND] | Literal[SupportedMongoOperations.AGGREGATE] # TODO: add the other operations here that return cursors
     def evaluate(self, client: MongodbClient, method_kwargs: dict) -> Awaitable:
         mongo_cursor = super().evaluate(client, method_kwargs)
         return mongo_cursor.to_list(length=None)
@@ -82,7 +82,8 @@ class RequestTopic(BaseModel):
                 remainder=topic_rem if topic_rem else None
             )
         except IndexError as e:
-            raise ValidationError() # TODO handle case where topic_remo.pop(0) errors
+            raise ValidationError() # TODO handle case where topic_rem.pop(0) errors
+
 
 class ResponseTopic(BaseModel):
     value: str = Field(min_length=1)
