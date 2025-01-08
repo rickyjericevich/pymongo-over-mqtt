@@ -8,7 +8,7 @@ from lib.mqtt import Mqtt as MqttClient
 from lib.schema import BaseTopic, ResponseTopic
 
 
-LOG_LEVEL = getenv("LOG_LEVEL", "DEBUG")
+LOG_LEVEL = getenv("LOG_LEVEL", "INFO")
 BROKER_HOST = getenv("BROKER_HOST", "localhost")
 MQTT_PORT = int(getenv("MQTT_PORT", 1883))
 MONGODB_URI = getenv("MONGODB_URI", "mongodb://localhost:27017")

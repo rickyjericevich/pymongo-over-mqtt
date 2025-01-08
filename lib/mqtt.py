@@ -22,23 +22,23 @@ class Mqtt(Client):
 
     @staticmethod
     def on_connect(self: Self, flags, result_code, properties) -> None:
-        logging.debug(f"Connected to MQTT Broker - {flags=}, {result_code=}, {properties=}")
+        logging.info(f"Connected to MQTT Broker - {flags=}, {result_code=}, {properties=}")
         self.subscribe(self.base_topic.value, qos=SubAckReasonCode.QOS2)
 
 
     @staticmethod
     def on_subscribe(self: Self, mid, qos, properties) -> None:
-        logging.debug(f"Subscribed to topic {self.base_topic.value} - {mid=}, {qos=}, {properties=}")
+        logging.info(f"Subscribed to topic {self.base_topic.value} - {mid=}, {qos=}, {properties=}")
 
 
     @staticmethod
     def on_disconnect(self: Self, packet, exc=None) -> None:
-        logging.debug(f"Disconnected from MQTT Broker - {packet=}, {exc=}")
+        logging.info(f"Disconnected from MQTT Broker - {packet=}, {exc=}")
 
 
     @staticmethod
     async def on_message(self: Self, topic, payload, qos, properties):
-        logging.debug(f"Got message from topic {topic} - {payload=}, {qos=}, {properties=}")
+        logging.info(f"Got message from topic {topic} - {payload=}, {qos=}, {properties=}")
         
         body = {}
         try:
@@ -58,7 +58,7 @@ class Mqtt(Client):
                 logging.warning("No result or valid response topics, not responding")
             else:
                 json_out = json_util.dumps(result)
-                logging.debug(f"Publishing to response topics {response_topics}: {json_out}")
+                logging.info(f"Publishing to response topics {response_topics}: {json_out}")
                 for topic in response_topics:
                     self.publish(
                         topic.value,
