@@ -1,4 +1,4 @@
-from typing import Any, Optional, Awaitable, Literal, ClassVar# , Self # uncomment this when support python 3.11
+from typing import Optional, Awaitable, Literal, ClassVar, Self
 from pydantic import BaseModel, Field, ValidationError, field_validator
 from enum import Enum
 from lib.mongodb import MongodbClient
@@ -30,7 +30,10 @@ class BaseTopic(BaseModel):
         if value.endswith("/"):
             return value + "#"
 
-        return value.split("/#")[0] + "/#"
+        return value.removesuffix("/#") + "/#"
+
+    def without_wildcard(self) -> str:
+        return self.value.removesuffix("/#")
 
 
 class PymongoClientAttrs(BaseModel):
@@ -73,23 +76,23 @@ class RequestTopic(BaseModel):
                 "database_name": db_name,
                 "mongodb_operator": topic_rem.pop(0),
             }
-
-            if len(topic_rem) >= 1:
-                op, *topic_rem = topic_rem
-                pymongo_attrs.update({
-                    "collection_name": pymongo_attrs["mongodb_operator"],
-                    "mongodb_operator": op,
-                })
-                topic_rem = "/".join(topic_rem)
-
-            super().__init__(
-                base_topic=base_topic,
-                pymongo_attrs=pymongo_attrs,
-                remainder=topic_rem if topic_rem else None
-                *args, **kwargs
-            )
         except IndexError as e:
-            raise ValidationError() # TODO handle case where topic_rem.pop(0) errors
+            raise ValueError(f"Expected Request topic to be of the form 'BASE_TOPIC/collection_name/operation' but got '{topic}'") from e
+
+        if len(topic_rem) >= 1:
+            op, *topic_rem = topic_rem
+            pymongo_attrs.update({
+                "collection_name": pymongo_attrs["mongodb_operator"],
+                "mongodb_operator": op,
+            })
+            topic_rem = "/".join(topic_rem)
+
+        super().__init__(
+            base_topic=base_topic,
+            pymongo_attrs=pymongo_attrs,
+            remainder=topic_rem if topic_rem else None,
+            *args, **kwargs
+        )
 
 
 class ResponseTopic(BaseModel):
@@ -100,12 +103,12 @@ class ResponseTopic(BaseModel):
     @field_validator('value', mode='after')
     @classmethod
     def _contains_prohibited_base_topic(cls, value: str) -> str:
-        if value.startswith(cls.prohibited_base_topic.value):
+        if value.startswith(cls.prohibited_base_topic.without_wildcard()):
             raise ValueError(f'Response Topic may not start with the value of BASE_TOPIC={cls.prohibited_base_topic}')
         return value
 
     @classmethod
-    def parse_string_list(cls, topics: list[str]) -> list[Any]:
+    def parse_string_list(cls, topics: list[str]) -> list[Self]:
         if topics is None or len(topics) == 0:
             return []
 
@@ -113,7 +116,8 @@ class ResponseTopic(BaseModel):
             try:
                 topics[i] = ResponseTopic(value=topics[i])
             except ValidationError as e:
-                logging.warning(f"Ignoring invalid response topic ({topics[i]}): {e}")
+                logging.warning(f"Ignoring invalid response topic ({topics[i]})")
+                logging.exception(e)
                 del topics[i]
 
         return topics
