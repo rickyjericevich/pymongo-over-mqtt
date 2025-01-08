@@ -1,5 +1,5 @@
-from typing import Any, Optional, Awaitable, Literal# , Self # uncomment this when support python 3.11
-from pydantic import BaseModel, Field, ValidationError
+from typing import Any, Optional, Awaitable, Literal, ClassVar# , Self # uncomment this when support python 3.11
+from pydantic import BaseModel, Field, ValidationError, field_validator
 from enum import Enum
 from lib.mongodb import MongodbClient
 import logging
@@ -14,16 +14,23 @@ class SupportedMongoOperations(str, Enum):
 
 
 class BaseTopic(BaseModel):
-    value: str = Field()
+    value: str = Field(min_length=1)
 
-    def strip_wildcards(self) -> str:
-        return self.val.split("/#")[0].split("/+")[0]
+    @field_validator('value', mode='after')
+    @staticmethod
+    def _parse_value(value: str) -> str:
+        if value.count("+"):
+            raise ValueError(f"The base topic must not contain single-level wildcards")
 
-    def with_multilevel_wildcard(self) -> str:
-        return self.val + "/#"
+        if value.count("#") > 1 or -1 < value.find("#") < len(value) - 1:
+            raise ValueError(f"The base topic can only have one multi-level wildcard and it must be the last character in the topic")
 
-    def __str__(self) -> str:
-        return self.val
+        # ensure that value ends with "/#"
+
+        if value.endswith("/"):
+            return value + "#"
+
+        return value.split("/#")[0] + "/#"
 
 
 class PymongoClientAttrs(BaseModel):
@@ -56,9 +63,8 @@ class RequestTopic(BaseModel):
     base_topic: str
     pymongo_attrs: CursorHandler | CoroutineHandler
     remainder: Optional[str] = None
-    
-    @classmethod
-    def from_string(cls, topic: str):# -> Self:
+
+    def __init__(self, topic: str, *args, **kwargs):
         base_topic, db_name, *topic_rem = topic.split("/")
         topic_rem = list(filter(lambda s: s, topic_rem)) # remove falsey elements from list
 
@@ -76,10 +82,11 @@ class RequestTopic(BaseModel):
                 })
                 topic_rem = "/".join(topic_rem)
 
-            return cls(
+            super().__init__(
                 base_topic=base_topic,
                 pymongo_attrs=pymongo_attrs,
                 remainder=topic_rem if topic_rem else None
+                *args, **kwargs
             )
         except IndexError as e:
             raise ValidationError() # TODO handle case where topic_rem.pop(0) errors
@@ -87,7 +94,26 @@ class RequestTopic(BaseModel):
 
 class ResponseTopic(BaseModel):
     value: str = Field(min_length=1)
-    # def __init__(self, prohibited_base_topic:str, response_topic: str):
-    #     if not response_topic or response_topic.startswith(prohibited_base_topic):
-    #         raise ValidationError() # TODO populate exception object
-        
+
+    prohibited_base_topic: ClassVar[BaseTopic]
+
+    @field_validator('value', mode='after')
+    @classmethod
+    def _contains_prohibited_base_topic(cls, value: str) -> str:
+        if value.startswith(cls.prohibited_base_topic.value):
+            raise ValueError(f'Response Topic may not start with the value of BASE_TOPIC={cls.prohibited_base_topic}')
+        return value
+
+    @classmethod
+    def parse_string_list(cls, topics: list[str]) -> list[Any]:
+        if topics is None or len(topics) == 0:
+            return []
+
+        for i in range(len(topics)-1, -1, -1):
+            try:
+                topics[i] = ResponseTopic(value=topics[i])
+            except ValidationError as e:
+                logging.warning(f"Ignoring invalid response topic ({topics[i]}): {e}")
+                del topics[i]
+
+        return topics

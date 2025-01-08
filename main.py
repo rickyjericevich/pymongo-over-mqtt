@@ -5,13 +5,14 @@ import logging
 import uvloop
 from lib.mongodb import MongodbClient
 from lib.mqtt import Mqtt as MqttClient
+from lib.schema import BaseTopic
 
 
 LOG_LEVEL = getenv("LOG_LEVEL", "DEBUG")
 BROKER_HOST = getenv("BROKER_HOST", "localhost")
 MQTT_PORT = int(getenv("MQTT_PORT", 1883))
 MONGODB_URI = getenv("MONGODB_URI", "mongodb://localhost:27017")
-BASE_TOPIC = getenv("BASE_TOPIC", "mongodb/#")
+BASE_TOPIC = BaseTopic(value=getenv("BASE_TOPIC", "mongodb/#"))
 
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
