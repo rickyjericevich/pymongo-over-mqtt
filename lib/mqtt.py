@@ -53,7 +53,6 @@ class Mqtt(Client):
             result = await topic.pymongo_attrs.evaluate(self.mongodb_client, body)
             logging.debug(f"{result=}")
 
-            ResponseTopic.prohibited_base_topic = self.base_topic # TODO: figure out a better way for ResponseTopic to have access to self.base_topic
             response_topics = ResponseTopic.parse_string_list(properties.get('response_topic'))
             if result is None or not len(response_topics):
                 logging.warning("No result or valid response topics, not responding")

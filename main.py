@@ -5,7 +5,7 @@ import logging
 import uvloop
 from lib.mongodb import MongodbClient
 from lib.mqtt import Mqtt as MqttClient
-from lib.schema import BaseTopic
+from lib.schema import BaseTopic, ResponseTopic
 
 
 LOG_LEVEL = getenv("LOG_LEVEL", "DEBUG")
@@ -13,6 +13,7 @@ BROKER_HOST = getenv("BROKER_HOST", "localhost")
 MQTT_PORT = int(getenv("MQTT_PORT", 1883))
 MONGODB_URI = getenv("MONGODB_URI", "mongodb://localhost:27017")
 BASE_TOPIC = BaseTopic(value=getenv("BASE_TOPIC", "mongodb/#"))
+ResponseTopic.prohibited_base_topic = BASE_TOPIC # TODO: figure out a better way for ResponseTopic to have access to BASE_TOPIC
 
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
