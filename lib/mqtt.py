@@ -20,7 +20,7 @@ class Mqtt(Client):
         )
 
 
-    @staticmethod # static method
+    @staticmethod
     def on_connect(self: Self, flags, result_code, properties) -> None:
         logging.debug(f"Connected to MQTT Broker - {flags=}, {result_code=}, {properties=}")
         self.subscribe(self.base_topic.value, qos=SubAckReasonCode.QOS2)

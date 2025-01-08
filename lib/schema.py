@@ -1,6 +1,8 @@
-from typing import Optional, Awaitable, Literal, ClassVar, Self
+import asyncio
+from typing import Optional, Literal, ClassVar, Self
 from pydantic import BaseModel, Field, ValidationError, field_validator
 from enum import Enum
+from motor.motor_asyncio import AsyncIOMotorCursor
 from lib.mongodb import MongodbClient
 import logging
 
@@ -43,7 +45,7 @@ class PymongoClientAttrs(BaseModel):
 
 
 class DefaultOperationHandler(PymongoClientAttrs):
-    def evaluate(self, client: MongodbClient, method_kwargs: dict): # -> Awaitable | Mongo Cursor:
+    def evaluate(self, client: MongodbClient, method_kwargs: dict) -> asyncio.Future | AsyncIOMotorCursor:
         for attr in self.model_dump(exclude_none=True).values():
             client = getattr(client, attr) # client var gets overwritten with value returned by getattrs()
 
@@ -52,13 +54,13 @@ class DefaultOperationHandler(PymongoClientAttrs):
 
 class CursorHandler(DefaultOperationHandler):
     mongodb_operator: Literal[SupportedMongoOperations.FIND] | Literal[SupportedMongoOperations.AGGREGATE] # TODO: add the other operations here that return cursors
-    def evaluate(self, client: MongodbClient, method_kwargs: dict) -> Awaitable:
-        mongo_cursor = super().evaluate(client, method_kwargs)
+    def evaluate(self, client: MongodbClient, method_kwargs: dict) -> asyncio.Future[list]:
+        mongo_cursor: AsyncIOMotorCursor = super().evaluate(client, method_kwargs)
         return mongo_cursor.to_list(length=None)
 
 
 class CoroutineHandler(DefaultOperationHandler):
-    def evaluate(self, client: MongodbClient, method_kwargs: dict) -> Awaitable:
+    def evaluate(self, client: MongodbClient, method_kwargs: dict) -> asyncio.Future:
         return super().evaluate(client, method_kwargs)
 
 
@@ -87,7 +89,7 @@ class RequestTopic(BaseModel):
             })
             topic_rem = "/".join(topic_rem)
 
-        super().__init__(
+        super().__init__( # TODO: use kwarg shortcuts when python 3.14 drops
             base_topic=base_topic,
             pymongo_attrs=pymongo_attrs,
             remainder=topic_rem if topic_rem else None,
@@ -109,10 +111,10 @@ class ResponseTopic(BaseModel):
 
     @classmethod
     def parse_string_list(cls, topics: list[str]) -> list[Self]:
-        if topics is None or len(topics) == 0:
+        if not topics:
             return []
 
-        for i in range(len(topics)-1, -1, -1):
+        for i in range(len(topics) - 1, -1, -1):
             try:
                 topics[i] = ResponseTopic(value=topics[i])
             except ValidationError as e:
