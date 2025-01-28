@@ -64,9 +64,21 @@ class CoroutineHandler(DefaultOperationHandler):
         return super().evaluate(client, method_kwargs)
 
 
+class WriteResultHandler(DefaultOperationHandler):
+    mongodb_operator: Literal[SupportedMongoOperations.INSERT_ONE]
+
+    @staticmethod
+    def get_write_result_properties(write_result) -> dict: # https://stackoverflow.com/a/65825416
+        return {k: getattr(write_result, k) for kls in type(write_result).mro() for k, v in vars(kls).items() if isinstance(v, property)}
+
+    async def evaluate(self, client: MongodbClient, method_kwargs: dict) -> asyncio.Future:
+        write_result = await super().evaluate(client, method_kwargs)
+        return self.get_write_result_properties(write_result)
+
+
 class RequestTopic(BaseModel):
     base_topic: str
-    pymongo_attrs: CursorHandler | CoroutineHandler
+    pymongo_attrs: CursorHandler | WriteResultHandler | CoroutineHandler
     remainder: Optional[str] = None
 
     def __init__(self, topic: str, *args, **kwargs):

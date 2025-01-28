@@ -1,7 +1,7 @@
 from gmqtt import Client
 from gmqtt.mqtt.constants import SubAckReasonCode
 import logging
-import json
+from json.decoder import JSONDecodeError
 from bson import json_util
 from .schema import BaseTopic, RequestTopic, ResponseTopic
 from .mongodb import MongodbClient
@@ -19,41 +19,39 @@ class Mqtt(Client):
             maximum_packet_size=268435460
         )
 
-
     @staticmethod
     def on_connect(self: Self, flags, result_code, properties) -> None:
         logging.info(f"Connected to MQTT Broker - {flags=}, {result_code=}, {properties=}")
         self.subscribe(self.base_topic.value, qos=SubAckReasonCode.QOS2)
 
-
     @staticmethod
     def on_subscribe(self: Self, mid, qos, properties) -> None:
         logging.info(f"Subscribed to topic {self.base_topic.value} - {mid=}, {qos=}, {properties=}")
-
 
     @staticmethod
     def on_disconnect(self: Self, packet, exc=None) -> None:
         logging.info(f"Disconnected from MQTT Broker - {packet=}, {exc=}")
 
-
     @staticmethod
     async def on_message(self: Self, topic, payload, qos, properties):
         logging.info(f"Got message from topic {topic} - {payload=}, {qos=}, {properties=}")
-        
+
         body = {}
         try:
-            body = json.loads(payload.decode("utf-8"), object_hook=json_util.object_hook) # use object_hook to rehydrate bson objects like objectId
-        except json.decoder.JSONDecodeError as e:
+            body = json_util.loads(payload.decode("utf-8")) # rehydrate bson objects like objectId
+        except JSONDecodeError:
             logging.warning("Could not parse message body - it is likely empty. Continuing with body={}")
+
+        if body == "": body = {}
 
         try:
             topic = RequestTopic(topic)
             logging.debug(f"request_{topic=}")
 
             result = await topic.pymongo_attrs.evaluate(self.mongodb_client, body)
-            logging.debug(f"{result=}")
 
             response_topics = ResponseTopic.parse_string_list(properties.get('response_topic'))
+
             if result is None or not len(response_topics):
                 logging.warning("No result or valid response topics, not responding")
             else:
