@@ -168,3 +168,12 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# NodeJS
+node_modules/
+
+# Gradle
+.gradle/
+
+# VS Code
+.vscode
