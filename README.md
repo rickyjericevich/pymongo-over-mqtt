@@ -277,6 +277,7 @@ function onSubscribe() {
 
 - [ ] Support a broker's auth options
 - [ ] Document code
+- [ ] Migrate from Motor to PyMongo Async
 - [ ] Improve handling of PyMongo command return types
 - [ ] Tests
 
