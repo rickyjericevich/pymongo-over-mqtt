@@ -7,12 +7,61 @@ from lib.mongodb import MongodbClient
 import logging
 
 
-class SupportedMongoOperations(str, Enum):
-    FIND = "find"
-    AGGREGATE = "aggregate"
+class SupportedPyMongoOperations(str, Enum):
+    # Database level ops https://pymongo.readthedocs.io/en/stable/api/pymongo/database.html
+    # __GETITEM__ = "__getitem__"
+    # __GETATTR__ = "__getattr__"
+    # AGGREGATE = "aggregate"
+    # COMMAND = "command"
+    # CREATE_COLLECTION = "create_collection"
+    # CURSOR_COMMAND = "cursor_command"
+    # DERFERENCE = "dereference"
+    DROP_COLLECTION = "drop_collection"
+    # GET_COLLECTION = "get_collection"
+    LIST_COLLECTION_NAMES = "list_collection_names"
+    # LIST_COLLECTIONS = "list_collections"
+    # VALIDATE_COLLECTION = "validate_collection"
+    # WATCH = "watch"
+    # WITH_OPTIONS = "with_options"
+
+    # Collection level ops https://pymongo.readthedocs.io/en/stable/api/pymongo/collection.html
+    # WITH_OPTIONS = "with_options"
+    # BULK_WRITE = "bulk_write"
     INSERT_ONE = "insert_one"
+    INSERT_MANY = "insert_many"
+    REPLACE_ONE = "replace_one"
     UPDATE_ONE = "update_one"
-    # TODO: complete this enum
+    UPDATE_MANY = "update_many"
+    DELETE_ONE = "delete_one"
+    DELETE_MANY = "delete_many"
+    # AGGREGATE = "aggregate"
+    # AGGREGATE_RAW_BATCHES = "aggregate_raw_batches"
+    # WATCH = "watch"
+    FIND = "find"
+    # FIND_RAW_BATCHES = "find_raw_batches"
+    FIND_ONE = "find_one"
+    FIND_ONE_AND_DELETE = "find_one_and_delete"
+    FIND_ONE_AND_REPLACE = "find_one_and_replace"
+    FIND_ONE_AND_UPDATE = "find_one_and_update"
+    COUNT_DOCUMENTS = "count_documents"
+    ESTIMATED_DOCUMENT_COUNT = "estimated_document_count"
+    # DISTINCT = "distinct"
+    CREATE_INDEX = "create_index"
+    CREATE_INDEXES = "create_indexes"
+    DROP_INDEX = "drop_index"
+    DROP_INDEXES = "drop_indexes"
+    LIST_INDEXES = "list_indexes"
+    INDEX_INFORMATION = "index_information"
+    CREATE_SEARCH_INDEX = "create_search_index"
+    CREATE_SEARCH_INDEXES = "create_search_indexes"
+    DROP_SEARCH_INDEX = "drop_search_index"
+    LIST_SEARCH_INDEXES = "list_search_indexes"
+    UPDATE_SEARCH_INDEX = "update_search_index"
+    DROP = "drop"
+    RENAME = "rename"
+    OPTIONS = "options"
+    # __GETITEM__ = "__getitem__"
+    # __GETATTR__ = "__getattr__"
 
 
 class BaseTopic(BaseModel):
@@ -41,7 +90,7 @@ class BaseTopic(BaseModel):
 class PymongoClientAttrs(BaseModel):
     database_name: str
     collection_name: Optional[str] = None
-    mongodb_operator: SupportedMongoOperations | str
+    mongodb_operator: SupportedPyMongoOperations | str
 
 
 class DefaultOperationHandler(PymongoClientAttrs):
@@ -53,7 +102,7 @@ class DefaultOperationHandler(PymongoClientAttrs):
 
 
 class CursorHandler(DefaultOperationHandler):
-    mongodb_operator: Literal[SupportedMongoOperations.FIND] | Literal[SupportedMongoOperations.AGGREGATE] # TODO: add the other operations here that return cursors
+    mongodb_operator: Literal[SupportedPyMongoOperations.FIND] | Literal[SupportedPyMongoOperations.AGGREGATE] # TODO: add the other operations here that return cursors
     def evaluate(self, client: MongodbClient, method_kwargs: dict) -> asyncio.Future[list]:
         mongo_cursor: AsyncIOMotorCursor = super().evaluate(client, method_kwargs)
         return mongo_cursor.to_list(length=None)
@@ -65,7 +114,7 @@ class CoroutineHandler(DefaultOperationHandler):
 
 
 class WriteResultHandler(DefaultOperationHandler):
-    mongodb_operator: Literal[SupportedMongoOperations.INSERT_ONE]
+    mongodb_operator: Literal[SupportedPyMongoOperations.INSERT_ONE]
 
     @staticmethod
     def get_write_result_properties(write_result) -> dict: # https://stackoverflow.com/a/65825416
